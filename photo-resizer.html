@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Squeeze — Resize Photos to an Exact File Size</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg:#FAFAF7;
+    --surface:#FFFFFF;
+    --ink:#16161A;
+    --ink-soft:#6B6B76;
+    --ink-faint:#A8A6A0;
+    --border:#E8E6DF;
+    --accent-1:#4361EE;
+    --accent-2:#F72585;
+    --accent-3:#7209B7;
+    --success:#06D6A0;
+    --success-bg:#E5FBF4;
+    --warning:#FF6B35;
+    --footer-bg:#14131A;
+    --footer-ink:#F4F3EF;
+    --footer-ink-soft:#9C9AA8;
+    --footer-border:#2A2836;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:10px;
+    --shadow-sm:0 1px 2px rgba(22,22,26,.04), 0 1px 1px rgba(22,22,26,.03);
+    --shadow-md:0 8px 24px rgba(22,22,26,.08);
+    --shadow-lg:0 20px 48px rgba(22,22,26,.14);
+    --header-h:68px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    background-image:
+      radial-gradient(circle at 8% 8%, rgba(67,97,238,.07), transparent 40%),
+      radial-gradient(circle at 92% 18%, rgba(247,37,133,.06), transparent 40%);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    display:flex;flex-direction:column;
+  }
+  h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  a{color:inherit;text-decoration:none;}
+  main{flex:1;}
+
+  .wrap{max-width:1160px;margin:0 auto;padding:0 24px;}
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    border:none;border-radius:99px;padding:12px 22px;font-size:14px;font-weight:600;
+    cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;
+    transition:transform .12s ease, box-shadow .15s ease, opacity .12s ease, background .15s ease, border-color .15s ease;
+    white-space:nowrap;
+  }
+  .btn svg{flex-shrink:0;}
+  .btn:active{transform:scale(.96);}
+  .btn-primary{
+    background:linear-gradient(135deg,var(--accent-1),var(--accent-2));
+    color:white;box-shadow:0 6px 18px rgba(67,97,238,.3);
+  }
+  .btn-primary:hover{box-shadow:0 10px 26px rgba(247,37,133,.35);transform:translateY(-1px);}
+  .btn-primary:disabled{opacity:.45;box-shadow:none;cursor:not-allowed;transform:none;}
+  .btn-secondary{background:var(--surface);color:var(--ink);border:1.5px solid var(--border);}
+  .btn-secondary:hover{border-color:var(--accent-1);color:var(--accent-1);}
+  .btn-success{
+    background:linear-gradient(135deg,#06D6A0,#1EA896);
+    color:white;box-shadow:0 6px 18px rgba(6,214,160,.3);
+  }
+  .btn-success:hover{box-shadow:0 10px 24px rgba(6,214,160,.4);transform:translateY(-1px);}
+  .btn-success:disabled{opacity:.45;box-shadow:none;cursor:not-allowed;transform:none;}
+  .btn-block{width:100%;justify-content:center;}
+  .btn:disabled{cursor:not-allowed;}
+
+  /* ---------- Header ---------- */
+  .site-header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(250,250,247,.78);
+    backdrop-filter:blur(14px) saturate(160%);
+    -webkit-backdrop-filter:blur(14px) saturate(160%);
+    border-bottom:1px solid var(--border);
+    height:var(--header-h);
+  }
+  .site-header .wrap{height:100%;display:flex;align-items:center;justify-content:space-between;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:19px;letter-spacing:-.02em;}
+  .brand .mark{
+    width:36px;height:36px;border-radius:11px;
+    background:linear-gradient(135deg,var(--accent-1),var(--accent-2));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:var(--shadow-sm);
+    flex-shrink:0;
+  }
+  .brand .mark svg{width:19px;height:19px;}
+  .header-right{display:flex;align-items:center;gap:14px;}
+  .live-badge{
+    display:inline-flex;align-items:center;gap:7px;
+    font-size:12.5px;font-weight:600;color:var(--accent-3);
+    background:rgba(114,9,183,.07);
+    border:1px solid rgba(114,9,183,.15);
+    padding:7px 14px;border-radius:99px;
+    letter-spacing:.01em;
+  }
+  .live-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px var(--success-bg);}
+  @media (max-width:560px){ .live-badge span.txt{display:none;} }
+
+  /* ---------- Hero ---------- */
+  .hero{padding:44px 0 8px;text-align:center;}
+  .hero h1{
+    font-size:clamp(32px,5.5vw,54px);
+    line-height:1.06;letter-spacing:-.03em;font-weight:700;margin:0 auto 16px;
+    max-width:780px;
+  }
+  .hero h1 .grad{
+    background:linear-gradient(100deg,var(--accent-1),var(--accent-2) 60%,var(--accent-3));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero p{font-size:17px;color:var(--ink-soft);max-width:560px;margin:0 auto 34px;line-height:1.55;}
+
+  /* ---------- Dropzone ---------- */
+  .dropzone{
+    border:2px dashed #C9C6E0;
+    border-radius:var(--radius-lg);
+    background:var(--surface);
+    padding:52px 24px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .18s ease, background .18s ease, transform .12s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  .dropzone:hover{border-color:var(--accent-1); transform:translateY(-2px); box-shadow:var(--shadow-md);}
+  .dropzone.drag{
+    border-color:var(--accent-2);
+    background:linear-gradient(135deg,rgba(67,97,238,.06),rgba(247,37,133,.06));
+  }
+  .dropzone input{display:none;}
+  .dz-icon{
+    width:62px;height:62px;margin:0 auto 18px;border-radius:16px;
+    background:linear-gradient(135deg,var(--accent-1),var(--accent-2));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:var(--shadow-md);
+  }
+  .dz-icon svg{width:28px;height:28px;stroke:white;}
+  .dropzone .dz-title{font-weight:600;font-size:17px;margin-bottom:5px;}
+  .dropzone .dz-sub{color:var(--ink-soft);font-size:14px;}
+  .dropzone .dz-formats{margin-top:16px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap;}
+  .fmt-chip{
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;
+    color:var(--ink-soft); background:var(--bg); border:1px solid var(--border);
+    padding:4px 9px;border-radius:6px;letter-spacing:.02em;
+  }
+
+  /* ---------- Gallery ---------- */
+  .gallery-head{display:flex;align-items:center;justify-content:space-between;margin:38px 0 16px;}
+  .gallery-head h2{font-size:19px;margin:0;letter-spacing:-.01em;}
+  .gallery-head .count{color:var(--ink-soft);font-size:13.5px;font-weight:500;}
+  .gallery{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px;
+  }
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+    overflow:hidden;box-shadow:var(--shadow-sm);
+    display:flex;flex-direction:column;
+    animation:pop .28s ease both;
+    transition:box-shadow .15s ease, transform .15s ease;
+  }
+  .card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
+  @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98);}to{opacity:1;transform:none;}}
+  .thumb-wrap{
+    position:relative;aspect-ratio:4/3;cursor:pointer;
+    background:
+      linear-gradient(45deg,#f1f0eb 25%,transparent 25%),
+      linear-gradient(-45deg,#f1f0eb 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#f1f0eb 75%),
+      linear-gradient(-45deg,transparent 75%,#f1f0eb 75%);
+    background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0;
+  }
+  .thumb-wrap img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .25s ease;}
+  .thumb-wrap img.loaded{opacity:1;}
+  .thumb-fallback{
+    position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    color:var(--ink-faint);font-size:12px;text-align:center;padding:10px;
+  }
+  .thumb-fallback svg{width:26px;height:26px;opacity:.6;}
+  .thumb-wrap.broken .thumb-fallback{display:flex;}
+  .thumb-wrap.broken img{display:none;}
+  .thumb-hint{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(22,22,26,0);opacity:0;transition:all .18s ease;
+  }
+  .thumb-wrap:hover .thumb-hint{background:rgba(22,22,26,.35);opacity:1;}
+  .thumb-hint span{
+    background:rgba(255,255,255,.94);color:var(--ink);font-size:12.5px;font-weight:700;
+    padding:7px 14px;border-radius:99px;display:inline-flex;align-items:center;gap:6px;
+    transform:translateY(4px);transition:transform .18s ease;
+  }
+  .thumb-wrap:hover .thumb-hint span{transform:translateY(0);}
+  .remove-btn{
+    position:absolute;top:9px;right:9px;width:28px;height:28px;border-radius:50%;
+    background:rgba(22,22,26,.55);backdrop-filter:blur(4px);color:white;border:none;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    transition:background .15s;z-index:2;
+  }
+  .remove-btn:hover{background:rgba(22,22,26,.8);}
+  .remove-btn svg{width:14px;height:14px;}
+  .badge-format{
+    position:absolute;bottom:9px;left:9px;
+    background:rgba(255,255,255,.92);color:var(--ink);
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;
+    padding:3px 8px;border-radius:6px;letter-spacing:.03em;z-index:2;
+  }
+  .badge-stale{
+    position:absolute;bottom:9px;right:9px;
+    background:var(--warning);color:white;
+    font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:.01em;
+    display:none;align-items:center;gap:4px;z-index:2;
+  }
+  .card.stale .badge-stale{display:inline-flex;}
+  .card-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px;}
+  .filename{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .size-row{display:flex;align-items:baseline;justify-content:space-between;font-size:12.5px;color:var(--ink-soft);}
+  .size-row .orig{font-family:'JetBrains Mono',monospace;}
+
+  .meter{position:relative;height:10px;border-radius:99px;background:var(--bg);border:1px solid var(--border);overflow:hidden;}
+  .meter-fill{
+    position:absolute;top:0;left:0;height:100%;border-radius:99px;
+    background:linear-gradient(90deg,var(--accent-1),var(--accent-2));
+    width:100%;transition:width .5s cubic-bezier(.4,0,.2,1);
+  }
+  .meter-fill.idle{background:var(--ink-faint);opacity:.35;}
+  .meter-fill.working{
+    background:linear-gradient(90deg,var(--accent-1),var(--accent-2),var(--accent-1));
+    background-size:200% 100%;animation:shimmer 1s linear infinite;
+  }
+  @keyframes shimmer{to{background-position:-200% 0;}}
+
+  .result-row{display:flex;align-items:center;justify-content:space-between;min-height:20px;}
+  .result-size{font-family:'JetBrains Mono',monospace;font-size:13.5px;font-weight:700;}
+  .result-size.ok{color:var(--success);}
+  .result-size.over{color:var(--warning);}
+  .savings-pill{
+    font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;
+    background:var(--success-bg);color:#049371;font-family:'JetBrains Mono',monospace;
+  }
+  .savings-pill.grow{background:#EAF1FF;color:var(--accent-1);}
+  .status-text{font-size:12px;color:var(--ink-soft);}
+
+  /* ---------- Settings panel (enhanced, sits below the photos) ---------- */
+  .settings-section{margin-top:34px;padding-bottom:52px;}
+  .settings{
+    position:relative;
+    background:linear-gradient(180deg, rgba(67,97,238,.05), rgba(247,37,133,.03) 60%, transparent);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-md);
+    padding:0;
+    overflow:hidden;
+    display:none;
+  }
+  .settings.show{display:block;}
+  .settings::before{
+    content:"";display:block;height:5px;
+    background:linear-gradient(90deg,var(--accent-1),var(--accent-2),var(--accent-3));
+  }
+  .settings-inner{padding:28px 30px 30px;}
+  .settings-heading{display:flex;align-items:center;gap:12px;margin-bottom:22px;}
+  .settings-heading .icon{
+    width:42px;height:42px;border-radius:13px;flex-shrink:0;
+    background:linear-gradient(135deg,var(--accent-1),var(--accent-2));
+    display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);
+  }
+  .settings-heading .icon svg{width:21px;height:21px;}
+  .settings-heading h3{margin:0 0 2px;font-size:18px;letter-spacing:-.01em;}
+  .settings-heading p{margin:0;font-size:13px;color:var(--ink-soft);}
+
+  .settings-row{display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap;}
+  .field{display:flex;flex-direction:column;gap:8px;}
+  .field label{
+    font-size:11.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em;
+    display:flex;align-items:center;gap:6px;
+  }
+  .field label .fi{
+    width:18px;height:18px;border-radius:5px;background:var(--surface);border:1px solid var(--border);
+    display:inline-flex;align-items:center;justify-content:center;color:var(--accent-1);
+  }
+  .field label .fi svg{width:11px;height:11px;}
+  .size-input{display:flex;align-items:center;gap:9px;}
+  .size-input input[type=number]{
+    width:112px;padding:12px 14px;border-radius:var(--radius-sm);
+    border:1.5px solid var(--border);font-family:'JetBrains Mono',monospace;
+    font-size:16px;font-weight:700;color:var(--ink);background:var(--surface);
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .size-input input[type=number]:focus{outline:none;border-color:var(--accent-1);box-shadow:0 0 0 4px rgba(67,97,238,.12);}
+  .seg{display:flex;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:3px;}
+  .seg button{
+    border:none;background:transparent;padding:9px 15px;font-size:13px;font-weight:700;
+    color:var(--ink-soft);border-radius:7px;cursor:pointer;font-family:inherit;transition:all .15s;
+  }
+  .seg button.active{background:linear-gradient(135deg,var(--accent-1),var(--accent-2));color:#fff;box-shadow:var(--shadow-sm);}
+  select.fmt-select{
+    padding:12px 36px 12px 14px;border-radius:var(--radius-sm);border:1.5px solid var(--border);
+    font-size:14.5px;font-weight:600;color:var(--ink);background:var(--surface);
+    appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B6B76' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+    background-repeat:no-repeat;background-position:right 12px center;background-size:16px;
+    cursor:pointer;transition:border-color .15s;
+    min-width:170px;
+  }
+  select.fmt-select:focus{outline:none;border-color:var(--accent-1);}
+  .divider{width:1px;align-self:stretch;background:var(--border);margin:2px 4px;}
+  @media (max-width:760px){ .divider{display:none;} }
+  .settings-actions{display:flex;gap:12px;flex-wrap:wrap;flex:1;justify-content:flex-end;}
+  @media (max-width:760px){ .settings-actions{justify-content:stretch;} .settings-actions .btn{flex:1;justify-content:center;} }
+
+  /* ---------- Preview modal ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(22,22,26,.6);backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;z-index:100;padding:24px;
+  }
+  .modal-overlay.show{display:flex;animation:fadeIn .18s ease;}
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  .modal-box{
+    background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);
+    max-width:940px;width:100%;max-height:88vh;overflow:auto;padding:26px;position:relative;
+    animation:pop .22s ease;
+  }
+  .modal-close{
+    position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:50%;
+    background:var(--bg);border:1.5px solid var(--border);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;color:var(--ink);
+    transition:background .15s;
+  }
+  .modal-close:hover{background:var(--border);}
+  .modal-title{margin:0 44px 6px 0;font-size:18px;letter-spacing:-.01em;overflow-wrap:anywhere;}
+  .modal-sub{margin:0 0 18px;font-size:13px;color:var(--ink-soft);}
+  .compare-wrap{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .compare-col{display:flex;flex-direction:column;gap:8px;}
+  .compare-label{font-size:12.5px;font-weight:700;color:var(--ink-soft);display:flex;justify-content:space-between;}
+  .compare-label b{color:var(--ink);font-family:'JetBrains Mono',monospace;}
+  .compare-col img{
+    width:100%;max-height:52vh;object-fit:contain;border-radius:var(--radius-md);
+    background:
+      linear-gradient(45deg,#f1f0eb 25%,transparent 25%),
+      linear-gradient(-45deg,#f1f0eb 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#f1f0eb 75%),
+      linear-gradient(-45deg,transparent 75%,#f1f0eb 75%);
+    background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0;
+    border:1px solid var(--border);
+  }
+  .compare-empty{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+    height:100%;min-height:200px;border:1.5px dashed var(--border);border-radius:var(--radius-md);
+    color:var(--ink-faint);font-size:13px;text-align:center;padding:20px;
+  }
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+  @media (max-width:640px){ .compare-wrap{grid-template-columns:1fr;} }
+
+  /* ---------- Footer ---------- */
+  .site-footer{background:var(--footer-bg);color:var(--footer-ink);margin-top:auto;position:relative;}
+  .site-footer::before{
+    content:"";display:block;height:4px;
+    background:linear-gradient(90deg,var(--accent-1),var(--accent-2),var(--accent-3));
+  }
+  .footer-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:40px;padding:48px 0 28px;}
+  .footer-brand .brand{color:var(--footer-ink);margin-bottom:12px;}
+  .footer-brand p{color:var(--footer-ink-soft);font-size:13.5px;line-height:1.65;max-width:320px;margin:0;}
+  .footer-col h4{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--footer-ink-soft);margin:0 0 14px;font-weight:700;}
+  .footer-col ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;}
+  .footer-col a{color:var(--footer-ink);font-size:13.5px;opacity:.88;transition:opacity .15s;}
+  .footer-col a:hover{opacity:1;color:var(--accent-2);}
+  .footer-bottom{
+    border-top:1px solid var(--footer-border);padding:18px 0 26px;
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    font-size:12.5px;color:var(--footer-ink-soft);
+  }
+  .footer-bottom .made{display:flex;align-items:center;gap:6px;}
+  .footer-bottom .dot-accent{width:6px;height:6px;border-radius:50%;background:linear-gradient(135deg,var(--accent-1),var(--accent-2));}
+  @media (max-width:760px){ .footer-grid{grid-template-columns:1fr 1fr;} .footer-brand{grid-column:1/-1;} }
+  @media (max-width:480px){ .footer-grid{grid-template-columns:1fr;} }
+
+  @media (max-width:640px){ .gallery{grid-template-columns:1fr 1fr;} }
+  @media (max-width:420px){ .gallery{grid-template-columns:1fr;} }
+  @media (prefers-reduced-motion:reduce){ *{animation-duration:.001ms !important;transition-duration:.001ms !important;} }
+  :focus-visible{outline:2.5px solid var(--accent-1);outline-offset:2px;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <div class="brand">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l4-8 4 6 3-4 5 6"/></svg>
+      </span>
+      Squeeze
+    </div>
+    <div class="header-right">
+      <span class="live-badge"><span class="dot"></span><span class="txt">100% on-device — nothing uploaded</span></span>
+    </div>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+  <section class="hero">
+    <h1>Shrink — or grow — any photo to the <span class="grad">exact size</span> you need.</h1>
+    <p>Upload your photos, then set a target in KB or MB below. Squeeze will shrink or grow the file to match, and let you preview before you download.</p>
+
+    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload photos">
+      <input type="file" id="fileInput" accept="image/*" multiple>
+      <div class="dz-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      </div>
+      <div class="dz-title">Drop photos here, or click to browse</div>
+      <div class="dz-sub">Upload one or many — they'll show up right below</div>
+      <div class="dz-formats">
+        <span class="fmt-chip">JPG</span><span class="fmt-chip">PNG</span><span class="fmt-chip">WEBP</span><span class="fmt-chip">GIF</span><span class="fmt-chip">BMP</span><span class="fmt-chip">AVIF*</span>
+      </div>
+    </div>
+
+    <div class="gallery-head" id="galleryHead" style="display:none;">
+      <h2>Your photos</h2>
+      <span class="count" id="galleryCount"></span>
+    </div>
+  </section>
+
+  <div class="gallery" id="gallery"></div>
+
+  <div class="settings-section">
+    <div class="settings" id="settings">
+      <div class="settings-inner">
+        <div class="settings-heading">
+          <span class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".5" fill="white"/></svg>
+          </span>
+          <div>
+            <h3>Resize settings</h3>
+            <p>Applies to every photo above — set your target, then preview or download.</p>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <div class="field">
+            <label for="targetSize"><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="5"/></svg></span> Target size</label>
+            <div class="size-input">
+              <input type="number" id="targetSize" min="1" value="200" inputmode="decimal">
+              <div class="seg" id="unitSeg">
+                <button type="button" data-unit="KB" class="active">KB</button>
+                <button type="button" data-unit="MB">MB</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="field">
+            <label for="fmtSelect"><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5-9 9"/></svg></span> Output format</label>
+            <select id="fmtSelect" class="fmt-select">
+              <option value="auto">Keep original</option>
+              <option value="image/jpeg">JPEG</option>
+              <option value="image/webp">WebP</option>
+              <option value="image/png">PNG</option>
+            </select>
+          </div>
+
+          <div class="settings-actions">
+            <button class="btn btn-primary" id="previewAllBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              Preview at target size
+            </button>
+            <button class="btn btn-success" id="downloadZipBtn" style="display:none;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Download
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+
+<div class="modal-overlay" id="previewModal">
+  <div class="modal-box">
+    <button class="modal-close" id="modalClose" aria-label="Close preview">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <h3 class="modal-title" id="modalTitle"></h3>
+    <p class="modal-sub" id="modalSub"></p>
+    <div class="compare-wrap">
+      <div class="compare-col">
+        <span class="compare-label">Original <b id="modalOrigSize"></b></span>
+        <img id="modalOrigImg" alt="Original photo">
+      </div>
+      <div class="compare-col" id="modalResizedCol">
+        <span class="compare-label">Resized <b id="modalResizedSize"></b></span>
+        <img id="modalResizedImg" alt="Resized photo" style="display:none;">
+        <div class="compare-empty" id="modalEmpty">
+          Set a target size and hit <strong>Preview at target size</strong> to see a result here.
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="modalCloseBtn">Close</button>
+      <button class="btn btn-success" id="modalDownloadBtn" style="display:none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Download this photo
+      </button>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="brand">
+          <span class="mark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l4-8 4 6 3-4 5 6"/></svg>
+          </span>
+          Squeeze
+        </div>
+        <p>A fast, private photo resizer that runs entirely in your browser. Set the size you need in KB or MB — bigger or smaller — preview the result, and download. No server, no sign-up, no waiting.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Formats</h4>
+        <ul>
+          <li><a href="#">JPEG / JPG</a></li>
+          <li><a href="#">PNG</a></li>
+          <li><a href="#">WebP</a></li>
+          <li><a href="#">GIF &amp; BMP</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Good to know</h4>
+        <ul>
+          <li><a href="#">Photos never leave your device</a></li>
+          <li><a href="#">Works offline once loaded</a></li>
+          <li><a href="#">No file size limit</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year"></span> Squeeze. All processing happens locally on your device.</span>
+      <span class="made"><span class="dot-accent"></span> Built for photos that just need to fit.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const settings = document.getElementById('settings');
+  const galleryHead = document.getElementById('galleryHead');
+  const galleryCount = document.getElementById('galleryCount');
+  const gallery = document.getElementById('gallery');
+  const targetSizeInput = document.getElementById('targetSize');
+  const unitSeg = document.getElementById('unitSeg');
+  const fmtSelect = document.getElementById('fmtSelect');
+  const previewAllBtn = document.getElementById('previewAllBtn');
+  const downloadZipBtn = document.getElementById('downloadZipBtn');
+
+  const previewModal = document.getElementById('previewModal');
+  const modalClose = document.getElementById('modalClose');
+  const modalCloseBtn = document.getElementById('modalCloseBtn');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalSub = document.getElementById('modalSub');
+  const modalOrigImg = document.getElementById('modalOrigImg');
+  const modalOrigSize = document.getElementById('modalOrigSize');
+  const modalResizedImg = document.getElementById('modalResizedImg');
+  const modalResizedSize = document.getElementById('modalResizedSize');
+  const modalEmpty = document.getElementById('modalEmpty');
+  const modalDownloadBtn = document.getElementById('modalDownloadBtn');
+
+  let unit = 'KB';
+  let items = []; // {id, file, previewUrl, resultBlob, resultPreviewUrl, lastPreviewKey, status}
+  let idCounter = 0;
+
+  function fmtBytes(bytes){
+    if (bytes >= 1024*1024) return (bytes/(1024*1024)).toFixed(2) + ' MB';
+    return Math.round(bytes/1024) + ' KB';
+  }
+
+  function targetBytes(){
+    const val = parseFloat(targetSizeInput.value) || 0;
+    return unit === 'MB' ? val * 1024 * 1024 : val * 1024;
+  }
+
+  function settingsKey(){ return targetBytes() + '|' + fmtSelect.value; }
+
+  function refreshDownloadLabel(){
+    downloadZipBtn.lastChild.textContent = items.length > 1 ? ' Download all (.zip)' : ' Download';
+  }
+
+  function refreshStaleBadges(){
+    const key = settingsKey();
+    items.forEach(item => {
+      const card = document.getElementById(item.id);
+      if (!card) return;
+      const isStale = item.status === 'done' && item.lastPreviewKey !== key;
+      card.classList.toggle('stale', isStale);
+    });
+  }
+
+  unitSeg.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    unit = btn.dataset.unit;
+    [...unitSeg.children].forEach(b => b.classList.toggle('active', b === btn));
+    refreshStaleBadges();
+  });
+  targetSizeInput.addEventListener('input', refreshStaleBadges);
+  fmtSelect.addEventListener('change', refreshStaleBadges);
+
+  // ---------- Drag & drop / file selection ----------
+  ['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, e => {
+    e.preventDefault(); dropzone.classList.add('drag');
+  }));
+  ['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, e => {
+    e.preventDefault(); dropzone.classList.remove('drag');
+  }));
+  dropzone.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fileInput.click(); }});
+  fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+  const IMG_EXT = /\.(jpe?g|png|webp|gif|bmp|avif|heic|heif|svg|tiff?)$/i;
+  function handleFiles(fileList){
+    const files = [...fileList].filter(f => f.type.startsWith('image/') || IMG_EXT.test(f.name));
+    if (!files.length) return;
+    files.forEach(addItem);
+    settings.classList.add('show');
+    galleryHead.style.display = 'flex';
+    updateCount();
+    refreshDownloadLabel();
+    fileInput.value = '';
+  }
+
+  function updateCount(){
+    galleryCount.textContent = items.length + (items.length === 1 ? ' photo' : ' photos');
+  }
+
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function fileToDataUrl(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function addItem(file){
+    const id = 'img_' + (idCounter++);
+    const item = { id, file, previewUrl: null, resultBlob: null, resultPreviewUrl: null, lastPreviewKey: null, status: 'idle' };
+    items.push(item);
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.id = id;
+    card.innerHTML = `
+      <div class="thumb-wrap" title="Click to view / compare">
+        <img alt="${escapeHtml(file.name)}">
+        <div class="thumb-fallback">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="1.8"/><path d="M21 15l-5-5-11 11"/></svg>
+          <span>Preview not available<br>for this format</span>
+        </div>
+        <div class="thumb-hint"><span>🔍 View</span></div>
+        <button class="remove-btn" aria-label="Remove photo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+        <span class="badge-format">${(file.type.split('/')[1] || 'img').toUpperCase()}</span>
+        <span class="badge-stale">⟳ Target changed</span>
+      </div>
+      <div class="card-body">
+        <div class="filename" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
+        <div class="size-row"><span>Original</span><span class="orig">${fmtBytes(file.size)}</span></div>
+        <div class="meter"><div class="meter-fill idle" style="width:100%"></div></div>
+        <div class="result-row">
+          <span class="status-text">Not previewed yet</span>
+        </div>
+        <div class="result-row">
+          <span class="result-size"></span>
+          <span class="savings-pill" style="display:none;"></span>
+        </div>
+      </div>
+    `;
+    gallery.prepend(card);
+
+    card.querySelector('.remove-btn').addEventListener('click', (e) => { e.stopPropagation(); removeItem(id); });
+    card.querySelector('.thumb-wrap').addEventListener('click', () => openPreview(item));
+
+    // Auto-render the thumbnail the moment the photo is uploaded.
+    const thumbImg = card.querySelector('.thumb-wrap img');
+    const thumbWrap = card.querySelector('.thumb-wrap');
+    fileToDataUrl(file).then(dataUrl => {
+      item.previewUrl = dataUrl;
+      thumbImg.onload = () => thumbImg.classList.add('loaded');
+      thumbImg.onerror = () => thumbWrap.classList.add('broken');
+      thumbImg.src = dataUrl;
+    }).catch(() => thumbWrap.classList.add('broken'));
+  }
+
+  function removeItem(id){
+    const idx = items.findIndex(i => i.id === id);
+    if (idx > -1) items.splice(idx,1);
+    const card = document.getElementById(id);
+    if (card) card.remove();
+    updateCount();
+    refreshDownloadLabel();
+    if (items.length === 0){
+      settings.classList.remove('show');
+      galleryHead.style.display = 'none';
+      downloadZipBtn.style.display = 'none';
+    }
+  }
+
+  // ---------- Image loading ----------
+  function loadImage(file){
+    return new Promise((resolve, reject) => {
+      fileToDataUrl(file).then(dataUrl => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('This browser could not decode "' + file.name + '". It may be corrupted or in an unsupported format (e.g. some HEIC files).'));
+        img.src = dataUrl;
+      }).catch(() => reject(new Error('Could not read "' + file.name + '" from disk.')));
+    });
+  }
+
+  function canvasToBlob(canvas, mime, quality){
+    return new Promise(resolve => canvas.toBlob(resolve, mime, quality));
+  }
+
+  async function renderAt(img, scale, mime, quality){
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (mime === 'image/jpeg'){ ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h); }
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob = await canvasToBlob(canvas, mime, quality);
+    if (!blob) throw new Error('This browser could not encode ' + mime);
+    return blob;
+  }
+
+  const MAX_UPSCALE = 4; // cap how far we'll enlarge dimensions to hit a bigger target
+
+  // Handles both directions: shrinks the file to fit a smaller target, or
+  // grows it (higher quality, then larger dimensions) to reach a bigger target.
+  async function compressWithMime(img, targetB, mime){
+    const lossless = mime === 'image/png';
+    const qualityForSize = lossless ? 1 : 0.92;
+
+    // Baseline: what do we get at native size, near-max quality?
+    const baseline = await renderAt(img, 1, mime, qualityForSize);
+
+    if (baseline.size <= targetB * 1.02 && baseline.size >= targetB * 0.98){
+      return baseline; // already a close match
+    }
+
+    if (baseline.size > targetB){
+      // ---- Need to shrink ----
+      let best = null;
+      if (!lossless){
+        let lo = 0.02, hi = qualityForSize;
+        for (let i=0;i<7;i++){
+          const q = (lo+hi)/2;
+          const blob = await renderAt(img, 1, mime, q);
+          if (blob.size > targetB){ hi = q; } else { lo = q; best = blob; }
+        }
+        if (!best || best.size > targetB){
+          let sLo = 0.05, sHi = 1;
+          for (let i=0;i<8;i++){
+            const s = (sLo+sHi)/2;
+            const blob = await renderAt(img, s, mime, 0.6);
+            if (blob.size > targetB){ sHi = s; } else { sLo = s; best = blob; }
+          }
+          if (!best) best = await renderAt(img, sLo, mime, 0.6);
+        }
+      } else {
+        let lo = 0.05, hi = 1;
+        for (let i=0;i<9;i++){
+          const s = (lo+hi)/2;
+          const blob = await renderAt(img, s, mime, 1);
+          if (blob.size > targetB){ hi = s; } else { lo = s; best = blob; }
+        }
+        if (!best) best = await renderAt(img, lo, mime, 1);
+      }
+      return best;
+    }
+
+    // ---- Need to grow: enlarge dimensions at high quality to add file weight ----
+    let best = baseline;
+    let lo = 1, hi = MAX_UPSCALE;
+    for (let i=0;i<8;i++){
+      const s = (lo+hi)/2;
+      const blob = await renderAt(img, s, mime, qualityForSize);
+      if (blob.size < targetB){ lo = s; best = blob; } else { hi = s; if (Math.abs(blob.size-targetB) < Math.abs(best.size-targetB)) best = blob; }
+    }
+    return best;
+  }
+
+  async function compressToTarget(file, targetB, chosenMime){
+    const img = await loadImage(file);
+    let mime = chosenMime === 'auto' ? (file.type && ['image/jpeg','image/png','image/webp'].includes(file.type) ? file.type : 'image/jpeg') : chosenMime;
+    try {
+      const best = await compressWithMime(img, targetB, mime);
+      return { blob: best, mime };
+    } catch(e){
+      if (mime !== 'image/jpeg'){
+        const best = await compressWithMime(img, targetB, 'image/jpeg');
+        return { blob: best, mime: 'image/jpeg' };
+      }
+      throw e;
+    }
+  }
+
+  // ---------- Processing ----------
+  async function processItem(item){
+    const card = document.getElementById(item.id);
+    if (!card) return;
+    const meterFill = card.querySelector('.meter-fill');
+    const statusText = card.querySelector('.status-text');
+    const resultSize = card.querySelector('.result-size');
+    const savingsPill = card.querySelector('.savings-pill');
+
+    meterFill.className = 'meter-fill working';
+    meterFill.style.width = '100%';
+    statusText.textContent = 'Matching your target size…';
+    resultSize.textContent = '';
+    savingsPill.style.display = 'none';
+
+    const target = targetBytes();
+    const key = settingsKey();
+    try {
+      const { blob } = await compressToTarget(item.file, target, fmtSelect.value);
+      item.resultBlob = blob;
+      item.resultPreviewUrl = await fileToDataUrl(blob);
+      item.status = 'done';
+      item.lastPreviewKey = key;
+
+      const grew = blob.size > item.file.size;
+      const pct = Math.abs(Math.round((1 - blob.size / item.file.size) * 100));
+      const withinTarget = Math.abs(blob.size - target) <= target * 0.05 + 1024;
+
+      meterFill.className = 'meter-fill';
+      meterFill.style.width = Math.min(100, (blob.size / Math.max(item.file.size, blob.size)) * 100) + '%';
+      statusText.textContent = withinTarget ? 'Matches your target' : 'Closest possible result';
+      resultSize.textContent = fmtBytes(blob.size);
+      resultSize.className = 'result-size ' + (withinTarget ? 'ok' : 'over');
+      savingsPill.style.display = 'inline-block';
+      savingsPill.className = 'savings-pill' + (grew ? ' grow' : '');
+      savingsPill.textContent = (grew ? '+' : '−') + pct + '%';
+
+      card.classList.remove('stale');
+      return true;
+    } catch(err){
+      console.error('Squeeze: failed to process', item.file.name, err);
+      statusText.textContent = (err && err.message) ? err.message : 'Could not process this image — try a different output format';
+      meterFill.className = 'meter-fill idle';
+      meterFill.style.width = '100%';
+      return false;
+    }
+  }
+
+  function extFor(mime){
+    if (mime === 'image/jpeg') return 'jpg';
+    if (mime === 'image/png') return 'png';
+    if (mime === 'image/webp') return 'webp';
+    return 'img';
+  }
+  function baseName(name){
+    const dot = name.lastIndexOf('.');
+    return dot > 0 ? name.slice(0, dot) : name;
+  }
+
+  function downloadItem(item){
+    if (!item.resultBlob) return;
+    const mime = item.resultBlob.type || 'image/jpeg';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(item.resultBlob);
+    a.download = baseName(item.file.name) + '-squeezed.' + extFor(mime);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  // ---------- Preview modal ----------
+  function openPreview(item){
+    modalTitle.textContent = item.file.name;
+    modalSub.textContent = 'Target: ' + fmtBytes(targetBytes()) + ' · Format: ' + (fmtSelect.options[fmtSelect.selectedIndex].text);
+    modalOrigImg.src = item.previewUrl || '';
+    modalOrigSize.textContent = fmtBytes(item.file.size);
+
+    if (item.resultBlob && item.resultPreviewUrl){
+      modalResizedImg.src = item.resultPreviewUrl;
+      modalResizedImg.style.display = 'block';
+      modalEmpty.style.display = 'none';
+      modalResizedSize.textContent = fmtBytes(item.resultBlob.size);
+      modalDownloadBtn.style.display = 'inline-flex';
+      modalDownloadBtn.onclick = () => downloadItem(item);
+    } else {
+      modalResizedImg.style.display = 'none';
+      modalEmpty.style.display = 'flex';
+      modalResizedSize.textContent = '';
+      modalDownloadBtn.style.display = 'none';
+    }
+
+    previewModal.classList.add('show');
+    previewModal.dataset.activeId = item.id;
+    modalClose.focus();
+  }
+
+  function closePreview(){
+    previewModal.classList.remove('show');
+    delete previewModal.dataset.activeId;
+  }
+
+  modalClose.addEventListener('click', closePreview);
+  modalCloseBtn.addEventListener('click', closePreview);
+  previewModal.addEventListener('click', (e) => { if (e.target === previewModal) closePreview(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && previewModal.classList.contains('show')) closePreview(); });
+
+  previewAllBtn.addEventListener('click', async () => {
+    if (!items.length) return;
+    previewAllBtn.disabled = true;
+    const originalLabel = previewAllBtn.innerHTML;
+    previewAllBtn.textContent = 'Previewing…';
+    let anyDone = false;
+    for (const item of items){
+      const ok = await processItem(item);
+      if (ok) anyDone = true;
+    }
+    previewAllBtn.disabled = false;
+    previewAllBtn.innerHTML = originalLabel;
+    if (anyDone) downloadZipBtn.style.display = 'inline-flex';
+    const firstDone = items.find(i => i.resultBlob);
+    if (firstDone) openPreview(firstDone);
+  });
+
+  downloadZipBtn.addEventListener('click', async () => {
+    const done = items.filter(i => i.resultBlob);
+    if (!done.length) return;
+
+    if (done.length === 1){
+      downloadItem(done[0]);
+      return;
+    }
+
+    downloadZipBtn.disabled = true;
+    const originalLabel = downloadZipBtn.innerHTML;
+    downloadZipBtn.textContent = 'Zipping…';
+    const zip = new JSZip();
+    done.forEach(item => {
+      const mime = item.resultBlob.type || 'image/jpeg';
+      zip.file(baseName(item.file.name) + '-squeezed.' + extFor(mime), item.resultBlob);
+    });
+    const content = await zip.generateAsync({type:'blob'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(content);
+    a.download = 'squeezed-photos.zip';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    downloadZipBtn.disabled = false;
+    downloadZipBtn.innerHTML = originalLabel;
+  });
+})();
+</script>
+</body>
+</html>
