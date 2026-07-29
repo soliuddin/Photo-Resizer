@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Photo Resizer</title>
+<title>Squeeze — Resize Photos to an Exact File Size</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -33,7 +33,41 @@
     --shadow-md:0 8px 24px rgba(22,22,26,.08);
     --shadow-lg:0 20px 48px rgba(22,22,26,.14);
     --header-h:68px;
+    --checker:#f1f0eb;
+    color-scheme:light;
   }
+  html[data-theme="dark"]{
+    --bg:#131318;
+    --surface:#1C1C24;
+    --ink:#F3F2F0;
+    --ink-soft:#ADAAB8;
+    --ink-faint:#6E6C7C;
+    --border:#302E3A;
+    --success-bg:rgba(6,214,160,.14);
+    --checker:#25232E;
+    color-scheme:dark;
+  }
+  html[data-theme="dark"] body{
+    background-image:
+      radial-gradient(circle at 8% 8%, rgba(67,97,238,.14), transparent 40%),
+      radial-gradient(circle at 92% 18%, rgba(247,37,133,.12), transparent 40%);
+  }
+  html[data-theme="dark"] .site-header{ background:rgba(19,19,24,.78); }
+  html[data-theme="dark"] .savings-pill.grow{ background:rgba(67,97,238,.16); color:#8FA4FF; }
+  html[data-theme="dark"] .savings-pill{ color:#3FE0B4; }
+  html[data-theme="dark"] .live-badge{ background:rgba(114,9,183,.16); }
+
+  .theme-toggle{
+    width:38px;height:38px;border-radius:50%;border:1.5px solid var(--border);
+    background:var(--surface);color:var(--ink);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:border-color .15s, transform .15s;
+  }
+  .theme-toggle:hover{border-color:var(--accent-1);transform:translateY(-1px);}
+  .theme-toggle svg{width:18px;height:18px;}
+  .theme-toggle .icon-moon{display:none;}
+  html[data-theme="dark"] .theme-toggle .icon-sun{display:none;}
+  html[data-theme="dark"] .theme-toggle .icon-moon{display:block;}
   *{box-sizing:border-box;}
   html{scroll-behavior:smooth;}
   html,body{margin:0;padding:0;}
@@ -178,10 +212,10 @@
   .thumb-wrap{
     position:relative;aspect-ratio:4/3;cursor:pointer;
     background:
-      linear-gradient(45deg,#f1f0eb 25%,transparent 25%),
-      linear-gradient(-45deg,#f1f0eb 25%,transparent 25%),
-      linear-gradient(45deg,transparent 75%,#f1f0eb 75%),
-      linear-gradient(-45deg,transparent 75%,#f1f0eb 75%);
+      linear-gradient(45deg,var(--checker) 25%,transparent 25%),
+      linear-gradient(-45deg,var(--checker) 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,var(--checker) 75%),
+      linear-gradient(-45deg,transparent 75%,var(--checker) 75%);
     background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0;
   }
   .thumb-wrap img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .25s ease;}
@@ -317,6 +351,13 @@
     min-width:170px;
   }
   select.fmt-select:focus{outline:none;border-color:var(--accent-1);}
+  .text-input{
+    padding:12px 14px;border-radius:var(--radius-sm);border:1.5px solid var(--border);
+    font-size:14px;font-weight:500;color:var(--ink);background:var(--surface);
+    transition:border-color .15s, box-shadow .15s;width:200px;
+  }
+  .text-input:focus{outline:none;border-color:var(--accent-1);box-shadow:0 0 0 4px rgba(67,97,238,.12);}
+  .field-hint{font-size:11.5px;color:var(--ink-faint);}
   .divider{width:1px;align-self:stretch;background:var(--border);margin:2px 4px;}
   @media (max-width:760px){ .divider{display:none;} }
   .settings-actions{display:flex;gap:12px;flex-wrap:wrap;flex:1;justify-content:flex-end;}
@@ -350,10 +391,10 @@
   .compare-col img{
     width:100%;max-height:52vh;object-fit:contain;border-radius:var(--radius-md);
     background:
-      linear-gradient(45deg,#f1f0eb 25%,transparent 25%),
-      linear-gradient(-45deg,#f1f0eb 25%,transparent 25%),
-      linear-gradient(45deg,transparent 75%,#f1f0eb 75%),
-      linear-gradient(-45deg,transparent 75%,#f1f0eb 75%);
+      linear-gradient(45deg,var(--checker) 25%,transparent 25%),
+      linear-gradient(-45deg,var(--checker) 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,var(--checker) 75%),
+      linear-gradient(-45deg,transparent 75%,var(--checker) 75%);
     background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0;
     border:1px solid var(--border);
   }
@@ -402,10 +443,14 @@
       <span class="mark">
         <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l4-8 4 6 3-4 5 6"/></svg>
       </span>
-      Photo Resizer
+      Squeeze
     </div>
     <div class="header-right">
       <span class="live-badge"><span class="dot"></span><span class="txt">100% on-device — nothing uploaded</span></span>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
     </div>
   </div>
 </header>
@@ -414,7 +459,7 @@
 <div class="wrap">
   <section class="hero">
     <h1>Shrink — or grow — any photo to the <span class="grad">exact size</span> you need.</h1>
-    <p>Upload your photos, then set a target in KB or MB below. Photo Resizer will shrink or grow the file to match, and let you preview before you download.</p>
+    <p>Upload your photos, then set a target in KB or MB below. Squeeze will shrink or grow the file to match, and let you preview before you download.</p>
 
     <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload photos">
       <input type="file" id="fileInput" accept="image/*" multiple>
@@ -473,6 +518,13 @@
             </select>
           </div>
 
+          <div class="divider"></div>
+
+          <div class="field">
+            <label for="customName"><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span> File name</label>
+            <input type="text" id="customName" class="text-input" placeholder="e.g. profile-photo (optional)" maxlength="80">
+          </div>
+
           <div class="settings-actions">
             <button class="btn btn-primary" id="previewAllBtn">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -511,6 +563,10 @@
       </div>
     </div>
     <div class="modal-actions">
+      <div class="field" style="margin-right:auto;">
+        <label for="modalCustomName"><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span> File name</label>
+        <input type="text" id="modalCustomName" class="text-input" placeholder="File name" maxlength="80">
+      </div>
       <button class="btn btn-secondary" id="modalCloseBtn">Close</button>
       <button class="btn btn-success" id="modalDownloadBtn" style="display:none;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
@@ -528,7 +584,7 @@
           <span class="mark">
             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l4-8 4 6 3-4 5 6"/></svg>
           </span>
-          Photo Resizer
+          Squeeze
         </div>
         <p>A fast, private photo resizer that runs entirely in your browser. Set the size you need in KB or MB — bigger or smaller — preview the result, and download. No server, no sign-up, no waiting.</p>
       </div>
@@ -551,7 +607,7 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© <span id="year"></span> Photo Resizer. All processing happens locally on your device.</span>
+      <span>© <span id="year"></span> Squeeze. All processing happens locally on your device.</span>
       <span class="made"><span class="dot-accent"></span> Built for photos that just need to fit.</span>
     </div>
   </div>
@@ -560,6 +616,27 @@
 <script>
 (function(){
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  // ---------- Day / night theme ----------
+  const themeToggle = document.getElementById('themeToggle');
+  const htmlEl = document.documentElement;
+  function getStoredTheme(){
+    try { return localStorage.getItem('squeeze-theme'); } catch(e){ return null; }
+  }
+  function setStoredTheme(v){
+    try { localStorage.setItem('squeeze-theme', v); } catch(e){ /* ignore if storage is blocked */ }
+  }
+  function applyTheme(theme){
+    if (theme === 'dark') htmlEl.setAttribute('data-theme', 'dark');
+    else htmlEl.removeAttribute('data-theme');
+  }
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(getStoredTheme() || (prefersDark ? 'dark' : 'light'));
+  themeToggle.addEventListener('click', () => {
+    const next = htmlEl.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    setStoredTheme(next);
+  });
 
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('fileInput');
@@ -570,6 +647,7 @@
   const targetSizeInput = document.getElementById('targetSize');
   const unitSeg = document.getElementById('unitSeg');
   const fmtSelect = document.getElementById('fmtSelect');
+  const customNameInput = document.getElementById('customName');
   const previewAllBtn = document.getElementById('previewAllBtn');
   const downloadZipBtn = document.getElementById('downloadZipBtn');
 
@@ -584,9 +662,10 @@
   const modalResizedSize = document.getElementById('modalResizedSize');
   const modalEmpty = document.getElementById('modalEmpty');
   const modalDownloadBtn = document.getElementById('modalDownloadBtn');
+  const modalCustomName = document.getElementById('modalCustomName');
 
   let unit = 'KB';
-  let items = []; // {id, file, previewUrl, resultBlob, resultPreviewUrl, lastPreviewKey, status}
+  let items = []; // {id, file, previewUrl, resultBlob, resultMime, resultPreviewUrl, lastPreviewKey, status, customName}
   let idCounter = 0;
 
   function fmtBytes(bytes){
@@ -668,7 +747,7 @@
 
   function addItem(file){
     const id = 'img_' + (idCounter++);
-    const item = { id, file, previewUrl: null, resultBlob: null, resultPreviewUrl: null, lastPreviewKey: null, status: 'idle' };
+    const item = { id, file, previewUrl: null, resultBlob: null, resultMime: null, resultPreviewUrl: null, lastPreviewKey: null, status: 'idle', customName: '' };
     items.push(item);
 
     const card = document.createElement('div');
@@ -851,8 +930,9 @@
     const target = targetBytes();
     const key = settingsKey();
     try {
-      const { blob } = await compressToTarget(item.file, target, fmtSelect.value);
+      const { blob, mime } = await compressToTarget(item.file, target, fmtSelect.value);
       item.resultBlob = blob;
+      item.resultMime = (blob && blob.type) ? blob.type : mime;
       item.resultPreviewUrl = await fileToDataUrl(blob);
       item.status = 'done';
       item.lastPreviewKey = key;
@@ -891,16 +971,42 @@
     const dot = name.lastIndexOf('.');
     return dot > 0 ? name.slice(0, dot) : name;
   }
+  function sanitizeFilename(name){
+    return name.replace(/[\/\\?%*:|"<>]/g, '-').trim().slice(0, 100);
+  }
+  function nameForItem(item){
+    const custom = (item.customName && item.customName.trim()) || (customNameInput.value && customNameInput.value.trim());
+    const cleaned = custom ? sanitizeFilename(custom) : '';
+    return cleaned ? cleaned : (baseName(item.file.name) + '-squeezed');
+  }
+  function dedupeName(name, usedNames){
+    let candidate = name, n = 2;
+    while (usedNames.has(candidate.toLowerCase())){
+      candidate = name + '-' + n;
+      n++;
+    }
+    usedNames.add(candidate.toLowerCase());
+    return candidate;
+  }
 
   function downloadItem(item){
     if (!item.resultBlob) return;
-    const mime = item.resultBlob.type || 'image/jpeg';
+    const mime = item.resultMime || item.resultBlob.type || 'image/jpeg';
     const a = document.createElement('a');
     a.href = URL.createObjectURL(item.resultBlob);
-    a.download = baseName(item.file.name) + '-squeezed.' + extFor(mime);
+    a.download = nameForItem(item) + '.' + extFor(mime);
     document.body.appendChild(a);
     a.click();
     a.remove();
+  }
+
+  // If settings changed since this photo was last processed, reprocess it
+  // with the current target/format before we hand back a result — this is
+  // what guarantees downloads always match the format you actually picked.
+  async function ensureFresh(item){
+    if (item.status !== 'done' || item.lastPreviewKey !== settingsKey()){
+      await processItem(item);
+    }
   }
 
   // ---------- Preview modal ----------
@@ -909,6 +1015,8 @@
     modalSub.textContent = 'Target: ' + fmtBytes(targetBytes()) + ' · Format: ' + (fmtSelect.options[fmtSelect.selectedIndex].text);
     modalOrigImg.src = item.previewUrl || '';
     modalOrigSize.textContent = fmtBytes(item.file.size);
+    modalCustomName.value = item.customName || nameForItem(item);
+    modalCustomName.oninput = () => { item.customName = modalCustomName.value; };
 
     if (item.resultBlob && item.resultPreviewUrl){
       modalResizedImg.src = item.resultPreviewUrl;
@@ -916,7 +1024,19 @@
       modalEmpty.style.display = 'none';
       modalResizedSize.textContent = fmtBytes(item.resultBlob.size);
       modalDownloadBtn.style.display = 'inline-flex';
-      modalDownloadBtn.onclick = () => downloadItem(item);
+      modalDownloadBtn.disabled = false;
+      modalDownloadBtn.onclick = async () => {
+        modalDownloadBtn.disabled = true;
+        const originalLabel = modalDownloadBtn.innerHTML;
+        modalDownloadBtn.textContent = 'Preparing…';
+        await ensureFresh(item);
+        modalDownloadBtn.disabled = false;
+        modalDownloadBtn.innerHTML = originalLabel;
+        // Reflect any refreshed size/format without re-focusing the close button
+        modalResizedSize.textContent = fmtBytes(item.resultBlob.size);
+        modalResizedImg.src = item.resultPreviewUrl;
+        downloadItem(item);
+      };
     } else {
       modalResizedImg.style.display = 'none';
       modalEmpty.style.display = 'flex';
@@ -957,21 +1077,34 @@
   });
 
   downloadZipBtn.addEventListener('click', async () => {
-    const done = items.filter(i => i.resultBlob);
+    let done = items.filter(i => i.resultBlob);
     if (!done.length) return;
 
+    downloadZipBtn.disabled = true;
+    const originalLabel = downloadZipBtn.innerHTML;
+    downloadZipBtn.textContent = 'Preparing…';
+
+    // Make sure every photo we're about to hand over matches the current
+    // target size / output format, not whatever was last previewed.
+    for (const item of done){
+      await ensureFresh(item);
+    }
+    done = items.filter(i => i.resultBlob);
+
     if (done.length === 1){
+      downloadZipBtn.disabled = false;
+      downloadZipBtn.innerHTML = originalLabel;
       downloadItem(done[0]);
       return;
     }
 
-    downloadZipBtn.disabled = true;
-    const originalLabel = downloadZipBtn.innerHTML;
     downloadZipBtn.textContent = 'Zipping…';
     const zip = new JSZip();
+    const usedNames = new Set();
     done.forEach(item => {
-      const mime = item.resultBlob.type || 'image/jpeg';
-      zip.file(baseName(item.file.name) + '-squeezed.' + extFor(mime), item.resultBlob);
+      const mime = item.resultMime || item.resultBlob.type || 'image/jpeg';
+      const name = dedupeName(nameForItem(item), usedNames) + '.' + extFor(mime);
+      zip.file(name, item.resultBlob);
     });
     const content = await zip.generateAsync({type:'blob'});
     const a = document.createElement('a');
